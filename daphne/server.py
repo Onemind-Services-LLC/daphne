@@ -6,19 +6,18 @@ from twisted.internet import asyncioreactor  # isort:skip
 
 twisted_loop = asyncio.new_event_loop()
 current_reactor = sys.modules.get("twisted.internet.reactor", None)
-if current_reactor is not None:
-    if not isinstance(current_reactor, asyncioreactor.AsyncioSelectorReactor):
-        warnings.warn(
-            "Something has already installed a non-asyncio Twisted reactor. Attempting to uninstall it; "
-            + "you can fix this warning by importing daphne.server early in your codebase or "
-            + "finding the package that imports Twisted and importing it later on.",
-            UserWarning,
-        )
-        del sys.modules["twisted.internet.reactor"]
-        asyncioreactor.install(twisted_loop)
-else:
+if current_reactor is None:
     asyncioreactor.install(twisted_loop)
 
+elif not isinstance(current_reactor, asyncioreactor.AsyncioSelectorReactor):
+    warnings.warn(
+        "Something has already installed a non-asyncio Twisted reactor. Attempting to uninstall it; "
+        + "you can fix this warning by importing daphne.server early in your codebase or "
+        + "finding the package that imports Twisted and importing it later on.",
+        UserWarning,
+    )
+    del sys.modules["twisted.internet.reactor"]
+    asyncioreactor.install(twisted_loop)
 import logging
 import time
 from concurrent.futures import CancelledError
@@ -235,20 +234,17 @@ class Server:
 
     @staticmethod
     def check_headers_type(message):
-        if not message["type"] == "http.response.start":
+        if message["type"] != "http.response.start":
             return
         for k, v in message.get("headers", []):
             if not isinstance(k, bytes):
                 raise ValueError(
-                    "Header name '{}' expected to be `bytes`, but got `{}`".format(
-                        k, type(k)
-                    )
+                    f"Header name '{k}' expected to be `bytes`, but got `{type(k)}`"
                 )
+
             if not isinstance(v, bytes):
                 raise ValueError(
-                    "Header value '{}' expected to be `bytes`, but got `{}`".format(
-                        v, type(v)
-                    )
+                    f"Header value '{v}' expected to be `bytes`, but got `{type(v)}`"
                 )
 
     ### Utility
@@ -264,16 +260,19 @@ class Server:
             # First, see if the protocol disconnected and the app has taken
             # too long to close up
             if (
-                disconnected
-                and time.time() - disconnected > self.application_close_timeout
+                (
+                    disconnected
+                    and time.time() - disconnected > self.application_close_timeout
+                )
+                and application_instance
+                and not application_instance.done()
             ):
-                if application_instance and not application_instance.done():
-                    logger.warning(
-                        "Application instance %r for connection %s took too long to shut down and was killed.",
-                        application_instance,
-                        repr(protocol),
-                    )
-                    application_instance.cancel()
+                logger.warning(
+                    "Application instance %r for connection %s took too long to shut down and was killed.",
+                    application_instance,
+                    repr(protocol),
+                )
+                application_instance.cancel()
             # Then see if the app is done and we should reap it
             if application_instance and application_instance.done():
                 try:

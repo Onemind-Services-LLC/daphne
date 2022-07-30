@@ -219,14 +219,15 @@ class CommandLineInterface:
         )
         # If verbosity is 1 or greater, or they told us explicitly, set up access log
         access_log_stream = None
-        if args.access_log:
-            if args.access_log == "-":
-                access_log_stream = sys.stdout
-            else:
-                access_log_stream = open(args.access_log, "a", 1)
-        elif args.verbosity >= 1:
+        if (
+            args.access_log
+            and args.access_log == "-"
+            or not args.access_log
+            and args.verbosity >= 1
+        ):
             access_log_stream = sys.stdout
-
+        elif args.access_log:
+            access_log_stream = open(args.access_log, "a", 1)
         # Import application
         sys.path.insert(0, ".")
         application = import_by_path(args.application)
@@ -258,7 +259,7 @@ class CommandLineInterface:
         )
         endpoints = sorted(args.socket_strings + endpoints)
         # Start the server
-        logger.info("Starting server at {}".format(", ".join(endpoints)))
+        logger.info(f'Starting server at {", ".join(endpoints)}')
         self.server = self.server_class(
             application=application,
             endpoints=endpoints,

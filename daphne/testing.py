@@ -54,9 +54,8 @@ class BaseDaphneTestingInstance:
         else:
             if self.process.errors.empty():
                 raise RuntimeError("Daphne did not start up, no error caught")
-            else:
-                error, traceback = self.process.errors.get(False)
-                raise RuntimeError("Daphne did not start up:\n%s" % traceback)
+            error, traceback = self.process.errors.get(False)
+            raise RuntimeError("Daphne did not start up:\n%s" % traceback)
 
     def __exit__(self, exc_type, exc_value, traceback):
         # Shut down the process

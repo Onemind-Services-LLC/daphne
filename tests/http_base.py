@@ -36,15 +36,15 @@ class DaphneTestCase(unittest.TestCase):
         and response messages.
         """
         with DaphneTestingInstance(
-            xff=xff, request_buffer_size=request_buffer_size
-        ) as test_app:
+                xff=xff, request_buffer_size=request_buffer_size
+            ) as test_app:
             # Add the response messages
             test_app.add_send_messages(responses)
             # Send it the request. We have to do this the long way to allow
             # duplicate headers.
             conn = HTTPConnection(test_app.host, test_app.port, timeout=timeout)
             if params:
-                path += "?" + parse.urlencode(params, doseq=True)
+                path += f"?{parse.urlencode(params, doseq=True)}"
             conn.putrequest(method, path, skip_accept_encoding=True, skip_host=True)
             # Manually send over headers
             if headers:
@@ -150,7 +150,7 @@ class DaphneTestCase(unittest.TestCase):
         # duplicate headers.
         conn = HTTPConnection(test_app.host, test_app.port, timeout=timeout)
         if params:
-            path += "?" + parse.urlencode(params, doseq=True)
+            path += f"?{parse.urlencode(params, doseq=True)}"
         conn.putrequest("GET", path, skip_accept_encoding=True, skip_host=True)
         # Do WebSocket handshake headers + any other headers
         if headers is None:
@@ -226,16 +226,15 @@ class DaphneTestCase(unittest.TestCase):
         # Read header byte
         # TODO: Proper receive buffer handling
         opcode = self.receive_from_socket(sock, 1)
-        if opcode in [b"\x81", b"\x82"]:
-            # Read length
-            length = struct.unpack("!B", self.receive_from_socket(sock, 1))[0]
-            # Read payload
-            payload = self.receive_from_socket(sock, length)
-            if opcode == b"\x81":
-                payload = payload.decode("utf8")
-            return payload
-        else:
+        if opcode not in [b"\x81", b"\x82"]:
             raise ValueError("Unknown websocket opcode: %r" % opcode)
+        # Read length
+        length = struct.unpack("!B", self.receive_from_socket(sock, 1))[0]
+        # Read payload
+        payload = self.receive_from_socket(sock, length)
+        if opcode == b"\x81":
+            payload = payload.decode("utf8")
+        return payload
 
     ### Assertions and test management
 

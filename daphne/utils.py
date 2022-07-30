@@ -52,7 +52,7 @@ def parse_x_forwarded_for(
     headers = {name.lower(): values for name, values in headers.items()}
 
     # Make sure header names are bytes (values are checked in header_value)
-    assert all(isinstance(name, bytes) for name in headers.keys())
+    assert all(isinstance(name, bytes) for name in headers)
 
     address_header_name = address_header_name.lower().encode("utf-8")
     result_addr = original_addr

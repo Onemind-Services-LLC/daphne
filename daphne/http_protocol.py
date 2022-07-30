@@ -142,7 +142,6 @@ class WebRequest(http.Request):
                 # Resume the producer so we keep getting data, if it's available as a method
                 self.channel._networkProducer.resumeProducing()
 
-            # Boring old HTTP.
             else:
                 # Sanitize and decode headers, potentially extracting root path
                 self.clean_headers = []
@@ -187,7 +186,7 @@ class WebRequest(http.Request):
                 buffer_size = self.server.request_buffer_size
                 while True:
                     chunk = self.content.read(buffer_size)
-                    more_body = not (len(chunk) < buffer_size)
+                    more_body = len(chunk) >= buffer_size
                     payload = {
                         "type": "http.request",
                         "body": chunk,
@@ -257,9 +256,9 @@ class WebRequest(http.Request):
         elif message["type"] == "http.response.body":
             if not self._response_started:
                 raise ValueError(
-                    "HTTP response has not yet been started but got %s"
-                    % message["type"]
+                    f'HTTP response has not yet been started but got {message["type"]}'
                 )
+
             # Write out body
             http.Request.write(self, message.get("body", b""))
             # End if there's no more content
@@ -291,7 +290,7 @@ class WebRequest(http.Request):
             else:
                 logger.debug("HTTP response chunk for %s", self.client_addr)
         else:
-            raise ValueError("Cannot handle message type %s!" % message["type"])
+            raise ValueError(f'Cannot handle message type {message["type"]}!')
 
     def handle_exception(self, exception):
         """
@@ -330,9 +329,11 @@ class WebRequest(http.Request):
         """
         Returns the time since the start of the request.
         """
-        if not hasattr(self, "request_start"):
-            return 0
-        return time.time() - self.request_start
+        return (
+            time.time() - self.request_start
+            if hasattr(self, "request_start")
+            else 0
+        )
 
     def basic_error(self, status, status_text, body):
         """
@@ -349,11 +350,14 @@ class WebRequest(http.Request):
             {
                 "type": "http.response.body",
                 "body": (
-                    self.error_template
-                    % {
-                        "title": str(status) + " " + status_text.decode("ascii"),
-                        "body": body,
-                    }
+                    (
+                        self.error_template
+                        % {
+                            "title": f"{str(status)} "
+                            + status_text.decode("ascii"),
+                            "body": body,
+                        }
+                    )
                 ).encode("utf8"),
             }
         )
@@ -388,7 +392,7 @@ class HTTPFactory(http.HTTPFactory):
             protocol.requestFactory = WebRequest
             return protocol
         except Exception:
-            logger.error("Cannot build protocol: %s" % traceback.format_exc())
+            logger.error(f"Cannot build protocol: {traceback.format_exc()}")
             raise
 
     # IProtocolNegotiationFactory

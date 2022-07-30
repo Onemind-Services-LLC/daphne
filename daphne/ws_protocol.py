@@ -193,9 +193,9 @@ class WebSocketProtocol(WebSocketServerProtocol):
                 raise ValueError("Socket has not been accepted, so cannot send over it")
             if message.get("bytes", None) and message.get("text", None):
                 raise ValueError(
-                    "Got invalid WebSocket reply message on %s - contains both bytes and text keys"
-                    % (message,)
+                    f"Got invalid WebSocket reply message on {message} - contains both bytes and text keys"
                 )
+
             if message.get("bytes", None):
                 self.serverSend(message["bytes"], True)
             if message.get("text", None):
@@ -275,10 +275,7 @@ class WebSocketProtocol(WebSocketServerProtocol):
         Called periodically to see if we should timeout something
         """
         # Web timeout checking
-        if (
-            self.duration() > self.server.websocket_timeout
-            and self.server.websocket_timeout >= 0
-        ):
+        if self.duration() > self.server.websocket_timeout >= 0:
             self.serverClose()
         # Ping check
         # If we're still connecting, deny the connection
@@ -322,5 +319,5 @@ class WebSocketFactory(WebSocketServerFactory):
             protocol.factory = self
             return protocol
         except Exception:
-            logger.error("Cannot build protocol: %s" % traceback.format_exc())
+            logger.error(f"Cannot build protocol: {traceback.format_exc()}")
             raise
